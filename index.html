@@ -25,7 +25,7 @@
           <p class="text-slate-500 text-sm mt-1">基於《槓桿ETF投資法》設計：50正2 + 現金/防禦資產動態再平衡系統</p>
         </div>
         <div class="flex gap-2 items-center">
-          <button onclick="fetchFromGoogleSheet()" class="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded shadow-sm flex items-center gap-1">
+          <button id="syncBtn" onclick="fetchFromGoogleSheet()" class="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded shadow-sm flex items-center gap-1">
             <i data-lucide="refresh-cw" class="w-4 h-4"></i> 從試算表同步
           </button>
           <button onclick="exportData()" class="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded shadow-sm hover:bg-slate-50 flex items-center gap-1">
@@ -126,97 +126,4 @@
                 <span>防禦資產 (現金/高股息)</span>
                 <span id="chartCashVal" class="text-emerald-600">$0</span>
               </div>
-              <div class="text-[11px] text-slate-500">扮演「安全氣囊」，暴跌時提供再平衡抄底資金。</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="text-xs bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-lg flex items-start gap-2">
-          <i data-lucide="alert-circle" class="w-4 h-4 text-amber-600 shrink-0 mt-0.5"></i>
-          <div>
-            <strong>提示：</strong> 您點擊左上角的「從試算表同步」按鈕，即可直接把 Google 試算表抓到的最新即時市值與數據帶入網頁中！
-          </div>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- Rebalance History Table -->
-    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
-          <i data-lucide="history" class="w-5 h-5 text-slate-600"></i> 歷史操作與再平衡紀錄
-        </h2>
-        <button onclick="addCurrentToHistory()" class="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition">
-          + 記錄當前持倉狀態
-        </button>
-      </div>
-
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs text-slate-600">
-          <thead class="bg-slate-50 border-b border-slate-200 font-semibold text-slate-700">
-            <tr>
-              <th class="py-3 px-4">日期</th>
-              <th class="py-3 px-4">50正2市值</th>
-              <th class="py-3 px-4">防禦資產市值</th>
-              <th class="py-3 px-4">總資產</th>
-              <th class="py-3 px-4">正2佔比</th>
-              <th class="py-3 px-4">操作備忘</th>
-              <th class="py-3 px-4 text-right">操作</th>
-            </tr>
-          </thead>
-          <tbody id="historyTableBody" class="divide-y divide-slate-100">
-            <!-- Records dynamically injected -->
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    // 請將您從 Google Apps Script 取得的 Web App API 網址填在下方引號中
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwMHrbgGvy23Q4WTj_OzMN68ibCdwig9YbA66AGndwzNRq_YMLSSlMi7UoXp63oo-Ui3w/exec";
-
-    let portfolio = {
-      etf: 500000,
-      cash: 500000,
-      targetRatio: 50,
-      threshold: 10,
-      history: []
-    };
-
-    let chartInstance = null;
-
-    function init() {
-      const saved = localStorage.getItem('leveraged_etf_portfolio');
-      if (saved) {
-        try {
-          portfolio = JSON.parse(saved);
-          document.getElementById('etfValue').value = portfolio.etf;
-          document.getElementById('cashValue').value = portfolio.cash;
-          document.getElementById('targetRatio').value = portfolio.targetRatio || 50;
-          document.getElementById('threshold').value = portfolio.threshold || 10;
-        } catch (e) {
-          console.error("Failed to parse saved data", e);
-        }
-      }
-      lucide.createIcons();
-      initChart();
-      updatePortfolio();
-    }
-
-    function saveState() {
-      localStorage.setItem('leveraged_etf_portfolio', JSON.stringify(portfolio));
-    }
-
-    function initChart() {
-      const ctx = document.getElementById('allocationChart').getContext('2d');
-      chartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels: ['50正2', '防禦資產/現金'],
-          datasets: [{
-            data: [portfolio.etf, portfolio.cash],
-            backgroundColor: ['#2563eb', '#10b981'],
-            borderWidth: 0
-          }]
+              <div class="text
