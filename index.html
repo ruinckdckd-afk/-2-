@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>50正2 槓桿ETF再平衡與資產追蹤儀表板</title>
+  <title>50正2 槓桿ETF再平衡紀錄儀表板</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Chart.js CDN -->
@@ -126,4 +126,52 @@
                 <span>防禦資產 (現金/高股息)</span>
                 <span id="chartCashVal" class="text-emerald-600">$0</span>
               </div>
-              <div class="text
+              <div class="text-[11px] text-slate-500">扮演「安全氣囊」，暴跌時提供再平衡抄底資金。</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-xs bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-lg flex items-start gap-2">
+          <i data-lucide="alert-circle" class="w-4 h-4 text-amber-600 shrink-0 mt-0.5"></i>
+          <div>
+            <strong>提示：</strong> 點擊右上角的「從試算表同步」按鈕，即可直接把 Google 試算表抓到的最新即時市值與數據帶入網頁中！
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Rebalance History Table -->
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+          <i data-lucide="history" class="w-5 h-5 text-slate-600"></i> 歷史操作與再平衡紀錄
+        </h2>
+        <button onclick="addCurrentToHistory()" class="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition">
+          + 記錄當前持倉狀態
+        </button>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs text-slate-600">
+          <thead class="bg-slate-50 border-b border-slate-200 font-semibold text-slate-700">
+            <tr>
+              <th class="py-3 px-4">日期</th>
+              <th class="py-3 px-4">50正2市值</th>
+              <th class="py-3 px-4">防禦資產市值</th>
+              <th class="py-3 px-4">總資產</th>
+              <th class="py-3 px-4">正2佔比</th>
+              <th class="py-3 px-4">操作備忘</th>
+              <th class="py-3 px-4 text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody" class="divide-y divide-slate-100">
+            <!-- Records dynamically injected -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const GOOGLE_SCRIPT
