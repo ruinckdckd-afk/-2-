@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>50正2 槓桿ETF再平衡與資產追蹤儀表板</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen p-4 md:p-8">
+
+  <div class="max-w-6xl mx-mx-auto max-w-5xl">
+    <!-- Header -->
+    <header class="mb-8 border-b border-slate-200 pb-4">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-2">
+            <i data-lucide="trending-up" class="text-blue-600"></i>
+            50正2 槓桿ETF再平衡紀錄儀表板
+          </h1>
+          <p class="text-slate-500 text-sm mt-1">基於《槓桿ETF投資法》設計：50正2 + 現金/防禦資產動態再平衡系統</p>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="exportData()" class="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded shadow-sm hover:bg-slate-50 flex items-center gap-1">
+            <i data-lucide="download" class="w-4 h-4"></i> 匯出JSON
+          </button>
+          <button onclick="importData()" class="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded shadow-sm hover:bg-slate-50 flex items-center gap-1">
+            <i data-lucide="upload" class="w-4 h-4"></i> 匯入JSON
+          </button>
+          <input type="file" id="importFile" class="hidden" onchange="handleImport(event)" accept=".json">
+        </div>
+      </div>
+    </header>
+
+    <!-- Strategy Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <span class="text-xs text-slate-500 font-semibold block mb-1">總資產價值 (TWD)</span>
+        <span id="totalValue" class="text-2xl font-extrabold text-slate-900">$0</span>
+      </div>
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <span class="text-xs text-slate-500 font-semibold block mb-1">50正2 目前佔比</span>
+        <div class="flex items-baseline gap-2">
+          <span id="currentRatio" class="text-2xl font-extrabold text-blue-600">0%</span>
+          <span class="text-xs text-slate-400">目標: <span id="targetRatioDisplay">50%</span></span>
+        </div>
+      </div>
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <span class="text-xs text-slate-500 font-semibold block mb-1">曝險比例 (對台股大盤)</span>
+        <span id="exposureRatio" class="text-2xl font-extrabold text-amber-600">0%</span>
+        <span class="text-xs text-slate-400 block mt-0.5">正2具備200%曝險效果</span>
+      </div>
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <span class="text-xs text-slate-500 font-semibold block mb-1">再平衡建議狀態</span>
+        <span id="rebalanceStatus" class="inline-block px-2.5 py-0.5 text-xs font-bold rounded-full bg-slate-100 text-slate-600">評估中...</span>
+      </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      
+      <!-- Input Controls & Rebalance Calculator -->
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+            <i data-lucide="sliders" class="w-5 h-5 text-slate-600"></i> 持倉現況與目標設定
+          </h2>
+          
+          <form id="portfolioForm" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">50正2 (00631L) 持股市值 (元)</label>
+              <input type="number" id="etfValue" value="500000" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" oninput="updatePortfolio()">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">防禦資產 (現金 / 定存 / 00878 / 0056) (元)</label>
+              <input type="number" id="cashValue" value="500000" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" oninput="updatePortfolio()">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">目標正2配置比例 (%): <span id="targetRatioLabel" class="font-bold text-blue-600">50%</span></label>
+              <input type="range" id="targetRatio" min="10" max="90" value="50" step="5" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" oninput="updatePortfolio()">
+              <p class="text-[11px] text-slate-400 mt-1">例如 50:50 組合 (曝險100%大盤)，或 70:30 組合 (曝險140%大盤)</p>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">再平衡觸發門檻 (偏離正負 %): <span id="thresholdLabel" class="font-bold text-slate-800">10%</span></label>
+              <input type="range" id="threshold" min="5" max="20" value="10" step="1" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" oninput="updatePortfolio()">
+            </div>
+          </form>
+        </div>
+
+        <!-- Actionable Advice Box -->
+        <div class="mt-6 p-4 rounded-lg bg-blue-50 border border-blue-100">
+          <h3 class="text-xs font-bold text-blue-900 uppercase tracking-wider mb-1 flex items-center gap-1">
+            <i data-lucide="compass" class="w-4 h-4"></i> 再平衡操作指引
+          </h3>
+          <p id="actionAdvice" class="text-xs text-blue-800 leading-relaxed">
+            計算中...
+          </p>
+        </div>
+      </div>
+
+      <!-- Asset Allocation & Exposure Chart -->
+      <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
+        <h2 class="text-lg font-bold text-slate-900 mb-2 flex items-center gap-2">
+          <i data-lucide="pie-chart" class="w-5 h-5 text-slate-600"></i> 資產佔比與曝險分析
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center my-auto py-4">
+          <div class="relative max-w-[220px] mx-auto">
+            <canvas id="allocationChart"></canvas>
+          </div>
+          <div class="space-y-3">
+            <div class="p-3 bg-slate-50 rounded-lg">
+              <div class="flex justify-between text-xs font-semibold mb-1">
+                <span>正2 (200%槓桿)</span>
+                <span id="chartEtfVal" class="text-blue-600">$0</span>
+              </div>
+              <div class="text-[11px] text-slate-500">扮演「成長引擎」，利用期貨自動滾動與每日複利發揮極致資本效率。</div>
+            </div>
+            <div class="p-3 bg-slate-50 rounded-lg">
+              <div class="flex justify-between text-xs font-semibold mb-1">
+                <span>防禦資產 (現金/高股息)</span>
+                <span id="chartCashVal" class="text-emerald-600">$0</span>
+              </div>
+              <div class="text-[11px] text-slate-500">扮演「安全氣囊與彈藥庫」，暴跌時提供再平衡抄底資產，降低大盤波動恐懼。</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-xs bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-lg flex items-start gap-2">
+          <i data-lucide="alert-circle" class="w-4 h-4 text-amber-600 shrink-0 mt-0.5"></i>
+          <div>
+            <strong>《槓桿ETF投資法》心法：</strong> 50:50 配置（一半50正2，一半現金/高股息），就能達到與全倉 0050 相同的 100% 大盤曝險，但手中卻多出 50% 的現金儲備，實現「跌能抄底、漲不落空」。
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Rebalance History Table -->
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+          <i data-lucide="history" class="w-5 h-5 text-slate-600"></i> 歷史操作與再平衡紀錄
+        </h2>
+        <button onclick="addCurrentToHistory()" class="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition">
+          + 記錄當前持倉狀態
+        </button>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs text-slate-600">
+          <thead class="bg-slate-50 border-b border-slate-200 font-semibold text-slate-700">
+            <tr>
+              <th class="py-3 px-4">日期</th>
+              <th class="py-3 px-4">50正2市值</th>
+              <th class="py-3 px-4">防禦資產市值</th>
+              <th class="py-3 px-4">總資產</th>
+              <th class="py-3 px-4">正2佔比</th>
+              <th class="py-3 px-4">對應動作</th>
+              <th class="py-3 px-4 text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody" class="divide-y divide-slate-100">
+            <!-- Records dynamically injected -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // App State
+    let portfolio = {
+      etf: 500000,
+      cash: 500000,
+      targetRatio: 50,
+      threshold: 10,
+      history: []
+    };
+
+    let chartInstance = null;
+
+    // Load Local Storage
+    function init() {
+      const saved = localStorage.getItem('leveraged_etf_portfolio');
+      if (saved) {
+        try {
+          portfolio = JSON.parse(saved);
+          document.getElementById('etfValue').value = portfolio.etf;
+          document.getElementById('cashValue').value = portfolio.cash;
+          document.getElementById('targetRatio').value = portfolio.targetRatio || 50;
+          document.getElementById('threshold').value = portfolio.threshold || 10;
+        } catch (e) {
+          console.error("Failed to parse saved data", e);
+        }
+      }
+      lucide.createIcons();
+      initChart();
+      updatePortfolio();
+    }
+
+    function saveState() {
+      localStorage.setItem('leveraged_etf_portfolio', JSON.stringify(portfolio));
+    }
+
+    function initChart() {
+      const ctx = document.getElementById('allocationChart').getContext('2d');
+      chartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['50正2', '防禦資產/現金'],
+          datasets: [{
+            data: [portfolio.etf, portfolio.cash],
+            backgroundColor: ['#2563eb', '#10b981'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          cutout: '70%',
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+    }
+
+    function updatePortfolio() {
+      const etf = parseFloat(document.getElementById('etfValue').value) || 0;
+      const cash = parseFloat(document.getElementById('cashValue').value) || 0;
+      const targetRatio = parseFloat(document.getElementById('targetRatio').value);
+      const threshold = parseFloat(document.getElementById('threshold').value);
+
+      portfolio.etf = etf;
+      portfolio.cash = cash;
+      portfolio.targetRatio = targetRatio;
+      portfolio.threshold = threshold;
+
+      document.getElementById('targetRatioLabel').innerText = `${targetRatio}%`;
+      document.getElementById('targetRatioDisplay').innerText = `${targetRatio}%`;
+      document.getElementById('thresholdLabel').innerText = `${threshold}%`;
+
+      const total = etf + cash;
+      const currentEtfRatio = total > 0 ? (etf / total) * 100 : 0;
+      const totalExposure = total > 0 ? ((etf * 2) / total) * 100 : 0;
+
+      // Update Top Metrics
+      document.getElementById('totalValue').innerText = `$${total.toLocaleString()}`;
+      document.getElementById('currentRatio').innerText = `${currentEtfRatio.toFixed(1)}%`;
+      document.getElementById('exposureRatio').innerText = `${totalExposure.toFixed(1)}%`;
+
+      // Update Chart
+      if (chartInstance) {
+        chartInstance.data.datasets[0].data = [etf, cash];
+        chartInstance.update();
+      }
+
+      document.getElementById('chartEtfVal').innerText = `$${etf.toLocaleString()} (${currentEtfRatio.toFixed(1)}%)`;
+      document.getElementById('chartCashVal').innerText = `$${cash.toLocaleString()} (${(100 - currentEtfRatio).toFixed(1)}%)`;
+
+      // Rebalance Calculation
+      const diffRatio = currentEtfRatio - targetRatio;
+      const statusBadge = document.getElementById('rebalanceStatus');
+      const adviceEl = document.getElementById('actionAdvice');
+
+      const targetEtfAmount = total * (targetRatio / 100);
+      const amountToTrade = Math.abs(etf - targetEtfAmount);
+
+      if (Math.abs(diffRatio) >= threshold) {
+        if (diffRatio > 0) {
+          statusBadge.className = "inline-block px-2.5 py-0.5 text-xs font-bold rounded-full bg-red-100 text-red-700";
+          statusBadge.innerText = "觸發賣出止盈";
+          adviceEl.innerHTML = `正2比例已暴增至 <strong>${currentEtfRatio.toFixed(1)}%</strong>（超過門檻 ${threshold}%）。<br>建議：<strong>賣出約 $${Math.round(amountToTrade).toLocaleString()} 元的 50正2</strong>，轉入現金/防禦資產鎖定獲利，恢復 50:50 黃金比例。`;
+        } else {
+          statusBadge.className = "inline-block px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700";
+          statusBadge.innerText = "觸發買入抄底";
+          adviceEl.innerHTML = `正2比例已下跌至 <strong>${currentEtfRatio.toFixed(1)}%</strong>（低於門檻 ${threshold}%）。<br>建議：動用防禦資產 <strong>買入約 $${Math.round(amountToTrade).toLocaleString()} 元的 50正2</strong>，在低位補足槓桿，實現高出低進。`;
+        }
+      } else {
+        statusBadge.className = "inline-block px-2.5 py-0.5 text-xs font-bold rounded-full bg-blue-100 text-blue-700";
+        statusBadge.innerText = "比例健康";
+        adviceEl.innerHTML = `目前正2偏離度為 <strong>${diffRatio > 0 ? '+' : ''}${diffRatio.toFixed(1)}%</strong>，尚未到達 ${threshold}% 的再平衡觸發點。<br>建議：<strong>繼續安心持股</strong>，無須頻繁交易，減少摩擦成本。`;
+      }
+
+      saveState();
+      renderHistory();
+    }
+
+    function addCurrentToHistory() {
+      const total = portfolio.etf + portfolio.cash;
+      const ratio = total > 0 ? ((portfolio.etf / total) * 100).toFixed(1) : 0;
+      const now = new Date().toISOString().split('T')[0];
+
+      portfolio.history.unshift({
+        id: Date.now(),
+        date: now,
+        etf: portfolio.etf,
+        cash: portfolio.cash,
+        total: total,
+        ratio: ratio,
+        note: `例行紀錄 (${ratio}%)`
+      });
+
+      saveState();
+      renderHistory();
+    }
+
+    function deleteHistory(id) {
+      portfolio.history = portfolio.history.filter(h => h.id !== id);
+      saveState();
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const tbody = document.getElementById('historyTableBody');
+      if (portfolio.history.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-slate-400">尚無歷史紀錄，點擊上方按鈕開始紀錄持倉。</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = portfolio.history.map(item => `
+        <tr class="hover:bg-slate-50">
+          <td class="py-3 px-4 font-medium text-slate-900">${item.date}</td>
+          <td class="py-3 px-4">$${item.etf.toLocaleString()}</td>
+          <td class="py-3 px-4">$${item.cash.toLocaleString()}</td>
+          <td class="py-3 px-4 font-bold text-slate-800">$${item.total.toLocaleString()}</td>
+          <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-bold">${item.ratio}%</span></td>
+          <td class="py-3 px-4 text-slate-500">${item.note}</td>
+          <td class="py-3 px-4 text-right">
+            <button onclick="deleteHistory(${item.id})" class="text-red-500 hover:text-red-700 font-semibold">刪除</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function exportData() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(portfolio));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `leveraged_etf_backup_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function importData() {
+      document.getElementById('importFile').click();
+    }
+
+    function handleImport(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          portfolio = imported;
+          document.getElementById('etfValue').value = portfolio.etf;
+          document.getElementById('cashValue').value = portfolio.cash;
+          document.getElementById('targetRatio').value = portfolio.targetRatio || 50;
+          document.getElementById('threshold').value = portfolio.threshold || 10;
+          saveState();
+          updatePortfolio();
+          alert('資產紀錄與設定已成功匯入！');
+        } catch (err) {
+          alert('檔案格式不正確，匯入失敗。');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // Initialize App
+    window.onload = init;
+  </script>
+</body>
+</html>
